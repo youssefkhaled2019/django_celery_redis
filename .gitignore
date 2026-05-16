@@ -14,7 +14,6 @@ summary_v2.py
 summary_v3.py
 .env
 old/
-README.md
 *.pyc
 .media/
 link.txt
