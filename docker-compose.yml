@@ -1,0 +1,140 @@
+version: "3.9"
+# setup services 
+
+services:
+  djangoserver:
+    container_name: backend
+    build:
+      context: .
+      dockerfile: docker/django/Dockerfile
+    # command: python manage.py runserver 0.0.0.0:8000
+    command:  sh -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
+    # command:  sh -c "python manage.py migrate && gunicorn Main.wsgi:application --bind 0.0.0.0:8000"
+
+    restart: always 
+    ports:
+      - "8000:8000"
+    # volumes:
+    #   - .:/app
+    depends_on:
+      # - redis  
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy  
+    env_file:
+      - .env    
+  
+  postgres:
+    image: postgres:15
+    container_name: postgres
+    restart: always
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    env_file:
+      - .env 
+    environment:
+      POSTGRES_DB: ${POSTGRES_NAME}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}  
+
+
+  redis:
+    image: redis:latest
+    container_name: redis
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  celery:
+    container_name: celery
+    build:
+      context: .
+      dockerfile: docker/django/Dockerfile
+    command: celery -A Main worker -l INFO --concurrency=4 
+    restart: always 
+    env_file:
+      - .env
+    # volumes:
+    #   - .:/app
+    depends_on:
+      # - redis
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+
+  celery-beat:
+    container_name: beat
+    build:
+      context: .
+      dockerfile: docker/django/Dockerfile
+    command: celery -A Main beat -l INFO
+    restart: always 
+    # volumes:
+    #   - .:/app
+    env_file:
+      - .env  
+    depends_on:
+      # - redis
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy  
+
+
+  celery-flower:
+    container_name: flower
+    build:
+      context: .
+      dockerfile: docker/django/Dockerfile
+    command: celery -A Main flower --port=5555  --broker=${CELERY_BROKER_URL}  --basic_auth=${FLOWER_USERNAME}:${FLOWER_PASSWORD}
+    restart: always 
+    ports:
+      - "127.0.0.1:5555:5555"
+      #- "5555:5555"
+    # volumes:
+    #   - .:/app  
+    env_file:
+      - .env  
+    depends_on:
+      # - redis
+      redis:
+        condition: service_healthy
+
+volumes:
+  redis_data:
+  postgres_data:
+
+
+
+# version: '3.9'
+
+# services:
+
+#   redis:
+#     image: redis
+#     container_name: redis
+#     ports:
+#       - "6379:6379"
+
+#   django:
+#     build: .
+#     command: python manage.py runserver 0.0.0.0:8000
+#     ports:
+#       - "8000:8000"
+#     depends_on:
+#       - redis
+

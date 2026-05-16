@@ -14,16 +14,13 @@ summary_v2.py
 summary_v3.py
 .env
 old/
+Dockerfile
+docker-compose*
 README.md
 *.pyc
 .media/
 link.txt
 db.sqlite3
-all_python_code_part1.txt
-
-
-
-
 -----------------------------------------------------------------------
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -243,4 +240,3 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
-all_python_code_part1.txt
